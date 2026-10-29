@@ -336,6 +336,11 @@ func (ts *TimerScheduler) AddJob(job *TimerJob) error {
 	if err := validateTimerJob(job); err != nil {
 		return err
 	}
+	model, err := NormalizeJobModel(job.Model, job.IsShellJob())
+	if err != nil {
+		return err
+	}
+	job.Model = model
 	job.SessionMode = NormalizeCronSessionMode(job.SessionMode)
 	if err := ts.store.Add(job); err != nil {
 		return err

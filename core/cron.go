@@ -93,6 +93,21 @@ func NormalizeCronSessionMode(s string) string {
 	}
 }
 
+// NormalizeJobModel trims a cron/timer per-job model override. "" means the
+// agent's configured model; a whitespace-only value is rejected. Model IDs are
+// deliberately not checked against a catalogue so custom/provider IDs work.
+// A model is rejected on shell (exec) jobs, which never reach an agent.
+func NormalizeJobModel(model string, shell bool) (string, error) {
+	m := strings.TrimSpace(model)
+	if m == "" && model != "" {
+		return "", fmt.Errorf("model must not be blank (omit it to use the agent's configured model)")
+	}
+	if m != "" && shell {
+		return "", fmt.Errorf("model is only supported for prompt jobs, not exec jobs")
+	}
+	return m, nil
+}
+
 func validateCronJob(j *CronJob) error {
 	// SessionKey anchors the cron execution to a platform (ExecuteCronJob
 	// derives platformName from the prefix before ":"). Without it the job
@@ -667,6 +682,11 @@ func (cs *CronScheduler) AddJob(job *CronJob) error {
 	if err := validateCronJob(job); err != nil {
 		return err
 	}
+	model, err := NormalizeJobModel(job.Model, job.IsShellJob())
+	if err != nil {
+		return err
+	}
+	job.Model = model
 	job.SessionMode = NormalizeCronSessionMode(job.SessionMode)
 	if _, err := cron.ParseStandard(job.CronExpr); err != nil {
 		return fmt.Errorf("invalid cron expression %q: %w", job.CronExpr, err)
@@ -744,6 +764,19 @@ func (cs *CronScheduler) UpdateJob(id string, field string, value any) error {
 				return fmt.Errorf("invalid mode %q (want default, bypassPermissions, acceptEdits, plan, auto, or dontAsk)", v)
 			}
 		}
+	}
+
+	// Normalize model (also its reflection alias "Model") before storing.
+	if strings.EqualFold(field, "model") {
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("model must be a string")
+		}
+		m, err := NormalizeJobModel(v, job.IsShellJob())
+		if err != nil {
+			return err
+		}
+		field, value = "model", m
 	}
 
 	// Validate session_mode if updating session_mode field

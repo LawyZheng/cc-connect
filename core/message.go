@@ -428,10 +428,12 @@ type Message struct {
 	ReplyCtx         any    // platform-specific context needed for replying
 	FromVoice        bool   // true if message originated from voice transcription
 	ModeOverride     string // if set, temporarily override agent permission mode for this message
-	// ModelOverride, when set, spawns THIS message's agent session with the
-	// given model instead of the agent's configured one (cron/timer jobs with
-	// a model field). Spawn-time only — it never mutates the agent's stored
-	// model, so concurrent sessions of the same project are unaffected.
+	// ModelOverride, when set, is the model used if this message spawns a new
+	// agent session (cron/timer jobs with a model field). It is spawn-time
+	// only: a live session is never switched and the agent's configured model
+	// is never mutated. The schedulers therefore always route model-bearing
+	// jobs to a fresh per-run session, so the override cannot be dropped or
+	// leak into chat turns. Agents without ModelOverrideStarter fail the spawn.
 	ModelOverride string
 	// IsPermissionResponse is set by inline-button / card-action paths in
 	// platforms when a synthesized message is forwarded as a permission

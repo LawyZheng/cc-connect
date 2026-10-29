@@ -91,10 +91,12 @@ func runTimerAdd(args []string) {
 				sessionMode = args[i]
 			}
 		case "--model":
-			if i+1 < len(args) {
-				i++
-				model = args[i]
+			if i+1 >= len(args) {
+				fmt.Fprintln(os.Stderr, "Error: --model requires a value")
+				os.Exit(1)
 			}
+			i++
+			model = args[i]
 		case "--timeout-mins":
 			if i+1 < len(args) {
 				i++
@@ -421,7 +423,10 @@ Options:
       --exec <command>       Shell command (runs directly, mutually exclusive with --prompt)
       --desc <text>          Short description
       --session-mode <mode>  reuse (default) or new-per-run
-      --model <model>        model override for this job's turn (e.g. haiku, sonnet); default: agent's configured model
+      --model <model>        Model override (e.g. haiku, sonnet, or a provider model ID). The run
+                             uses a fresh isolated session (no chat context, same workspace
+                             files). Agent must support it (currently claudecode); otherwise
+                             the run fails. Not for --exec
       --timeout-mins <n>     Max minutes to wait per run (0 = no limit; default 30)
       --mute                 Suppress all messages (start + result)
       --data-dir <path>      Data directory (default: ~/.cc-connect)
@@ -431,5 +436,6 @@ Examples:
   cc-connect timer add --delay 2h --prompt "Check PR status"
   cc-connect timer add --delay 30m --exec "df -h" --desc "Disk check"
   cc-connect timer add --at "2026-05-16T09:00" --prompt "Morning standup reminder"
+  cc-connect timer add --delay 1h --prompt "Summarize CI failures" --model haiku
   cc-connect timer add 2h Check PR status`)
 }
