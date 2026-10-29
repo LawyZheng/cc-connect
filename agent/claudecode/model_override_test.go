@@ -60,7 +60,7 @@ func TestStartSessionWithModel_PassesOverrideToCLI(t *testing.T) {
 			if err != nil {
 				t.Fatalf("start session: %v", err)
 			}
-			defer sess.Close()
+			defer func() { _ = sess.Close() }()
 
 			got := waitForModelArg(t, argsFile)
 			if got != tt.want {
